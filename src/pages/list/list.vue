@@ -3,32 +3,53 @@
     <view class="nav-left" @click="goBack">
       <uni-icons type="back" size="22" color="#6366f1" />
     </view>
-    <view class="nav-title">漫画目录</view>
+    <view class="nav-title" style="flex:1;display:flex;align-items:center;justify-content:center;padding:0 12rpx;">
+      <input
+        class="search-input"
+        v-model="searchText"
+        placeholder="搜索漫画标题"
+        @confirm="onSearch"
+        @input="onInput"
+        confirm-type="search"
+        style="width:100%;height:56rpx;font-size:28rpx;background:#f3f4f6;border-radius:8rpx;padding:0 16rpx;border:none;outline:none;"
+      />
+      <button class="search-btn" @click="onSearch" style="margin-left:8rpx;height:56rpx;">搜索</button>
+    </view>
     <view class="nav-right"></view>
   </view>
-  <view v-if="comics.length" class="banner-wrap">
-    <uni-swiper-dot :info="bannerList" :current="bannerCurrent" mode="round" field="title" class="banner-dot">
-      <swiper
-        class="banner-swiper"
-        :indicator-dots="false"
-        :autoplay="true"
-        :interval="4000"
-        :duration="500"
-        circular
-        @change="onBannerChange"
-      >
-        <swiper-item v-for="(item, idx) in bannerList" :key="item.Id">
-          <view class="banner-item" @click="goToDetail(item)">
-            <image :src="item.cover_url" class="banner-img" mode="center" />
-            <view class="banner-title">{{ item.title }}</view>
-          </view>
-        </swiper-item>
-      </swiper>
-    </uni-swiper-dot>
-  </view>
+  
   <view class="list-bg">
-    <scroll-view scroll-y class="list-scroll">
-      <view v-for="comic in comics" :key="comic.Id" class="comic-section">
+    <scroll-view
+      scroll-y
+      class="list-scroll"
+      :scroll-top="scrollTop"
+      scroll-with-animation
+      @scroll="onScroll"
+      @scrolltolower="onScrollToLower"
+      lower-threshold="100"
+      show-scrollbar="true"
+    >
+      <view v-if="comics.length" class="banner-wrap">
+        <uni-swiper-dot :info="bannerList" :current="bannerCurrent" mode="round" field="title" class="banner-dot">
+          <swiper
+            class="banner-swiper"
+            :indicator-dots="false"
+            :autoplay="true"
+            :interval="4000"
+            :duration="500"
+            circular
+            @change="onBannerChange"
+          >
+            <swiper-item v-for="(item, idx) in bannerList" :key="item.Id">
+              <view class="banner-item" @click="goToDetail(item)">
+                <image :src="item.cover_url" class="banner-img" mode="center" />
+                <view class="banner-title">{{ item.title }}</view>
+              </view>
+            </swiper-item>
+          </swiper>
+        </uni-swiper-dot>
+      </view>
+      <view v-if="comics.length" v-for="comic in comics" :key="comic.Id" class="comic-section">
         <uni-section
           :title="comic.title"
           type="line"
@@ -47,6 +68,8 @@
                 <text class="meta-item">热度：{{ comic.views }}</text>
                 <text class="meta-item">更新：{{ comic.update_time }}</text>
               </view>
+              <!-- description -->
+               <view class="comic-description">{{ comic.description }}</view>
               <view class="comic-tags">
                 <uni-tag
                   v-for="tag in comic.tags"
@@ -61,32 +84,43 @@
           </view>
         </uni-section>
       </view>
+      <view v-else class="no-data">暂无数据</view>
       <view v-if="!pageInfo.isLastPage" class="load-more">
-        <button class="load-more-btn" :loading="loading" @click="getComics(true)">加载更多</button>
+        <uni-load-more :status="'loading'"></uni-load-more>
+        <!-- <button class="load-more-btn" :loading="loading" @click="getComics(true)">加载更多</button> -->
       </view>
       <view v-else class="no-more">—— 没有更多了 ——</view>
     </scroll-view>
+    <view v-if="showGoTop" class="go-top-btn" @click="goToTop">
+      <uni-icons type="arrow-up" size="32" color="#fff" />
+    </view>
   </view>
 </template>
 
 <script>
+import { toTraditional } from 'chinese-simple2traditional';
+
 export default {
   data() {
     return {
       comics: [],
+      originalComics: [],
       pageInfo: {
         page: 1,
         pageSize: 25,
         isLastPage: false
       },
       loading: false,
-      bannerCurrent: 0
+      bannerCurrent: 0,
+      scrollTop: 0,
+      showGoTop: false,
+      searchText: '',
     }
   },
   computed: {
     bannerList() {
-      return this.comics.slice(0, 5);
-    }
+      return this.originalComics.slice(0, 5);
+    },
   },
   async onLoad() {
     this.getComics()
@@ -95,11 +129,15 @@ export default {
     goToDetail(comic) {
       uni.navigateTo({ url: `/pages/detail/detail?id=${comic.Id}` })
     },
-    getComics(loadMore = false) {
+    getComics(loadMore = false, searchText = '') {
       if (this.loading || (loadMore && this.pageInfo.isLastPage)) return;
       this.loading = true;
+      let url = import.meta.env.VITE_SUPABASE_URL + '/books/list?limit=' + import.meta.env.VITE_PAGE_SIZE + '&sort=' + import.meta.env.VITE_PAGE_SORT;
+      if (searchText) {
+        url += `&where=(title,like,${encodeURIComponent(searchText + '%')})`;
+      }
       uni.request({
-        url: import.meta.env.VITE_SUPABASE_URL + '/books/list?limit='+import.meta.env.VITE_PAGE_SIZE+'&sort='+import.meta.env.VITE_PAGE_SORT,
+        url: url,
         method: 'GET',
         data: {
           page: loadMore ? this.pageInfo.page + 1 : 1,
@@ -122,10 +160,26 @@ export default {
             item.tags = item.tags.split(',');
             return item;
           });
-          if (loadMore) {
-            this.comics = this.comics.concat(data.list);
+          if (searchText) {
+            if (!data.list.length && !loadMore) {
+              uni.showToast({
+                title: '没有找到数据',
+                icon: 'none'
+              });
+              return;
+            }
+            if (loadMore) {
+              this.comics = this.comics.concat(data.list);
+            } else {
+              this.comics = data.list;
+            }
           } else {
-            this.comics = data.list;
+            if (loadMore) {
+              this.comics = this.comics.concat(data.list);
+            } else {
+              this.comics = data.list;
+              this.originalComics = data.list.slice();
+            }
           }
           this.pageInfo = data.pageInfo;
         },
@@ -135,10 +189,42 @@ export default {
       })
     },
     goBack() {
-      uni.navigateBack();
+      uni.navigateTo({ url: '/pages/index/index' });
     },
     onBannerChange(e) {
       this.bannerCurrent = e.detail.current;
+    },
+    onScrollToLower() {
+      console.log('onScrollToLower');
+      this.getComics(true);
+    },
+    onScroll(e) {
+      this.showGoTop = e.detail.scrollTop > 300;
+    },
+    goToTop() {
+      this.scrollTop = 1;
+      this.$nextTick(() => {
+        this.scrollTop = 0;
+      });
+    },
+    onInput(e) {
+      this.searchText = e.detail.value;
+    },
+    onSearch() {
+      if (this.searchText.length === 0) {
+        uni.showToast({
+          title: '请输入搜索内容',
+          icon: 'none'
+        });
+        return;
+      }
+      const traditionalText = toTraditional(this.searchText);
+      console.log(traditionalText);
+      uni.setStorage({
+        key: 'searchText',
+        data: traditionalText
+      });
+      this.getComics(false, traditionalText);
     }
   }
 }
@@ -148,10 +234,10 @@ export default {
 .list-bg {
   min-height: 100vh;
   background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
-  padding: 0;
+  padding: 2.75rem 0 0;
 }
 .list-scroll {
-  padding: 24rpx 0;
+  height: 99vh;
 }
 .comic-section {
   margin: 0 24rpx 32rpx 24rpx;
@@ -288,5 +374,54 @@ export default {
 }
 .banner-dot {
   margin-top: 12rpx;
+}
+.go-top-btn {
+  position: fixed;
+  right: 48rpx;
+  bottom: 120rpx;
+  width: 80rpx;
+  height: 80rpx;
+  background: #6366f1;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx #6366f122;
+  z-index: 999;
+}
+.search-bar {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  margin: 24rpx 24rpx 0 24rpx;
+  box-shadow: 0 2rpx 8rpx #6366f122;
+}
+.search-input {
+  flex: 1;
+  height: 64rpx;
+  border: none;
+  outline: none;
+  font-size: 28rpx;
+  padding: 0 24rpx;
+  background: #f3f4f6;
+  border-radius: 8rpx;
+  margin-right: 16rpx;
+}
+.search-btn {
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 8rpx;
+  padding: 0 32rpx;
+  height: 64rpx;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+}
+.no-data{
+  text-align: center;
+  color: #6366f1;
 }
 </style>

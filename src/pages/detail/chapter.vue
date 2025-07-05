@@ -35,7 +35,10 @@
       <view>
         <view class="popup-title">章节目录({{ comic.chapters }})</view>
         <!-- 返回漫画页 -->
-        <view class="chapter-item" @click="goLink(comic.Id)">返回漫画页</view>
+        <view class="chapter-item" @click="goLink(comic.Id)">
+          <uni-icons type="back" size="22" color="#6366f1"></uni-icons>
+          返回漫画页
+        </view>
         <view class="popup-divider"></view>
         <scroll-view scroll-y class="popup-scroll"> 
           <view v-for="(item, index) in chatpterList" :key="index" class="chapter-list">
@@ -74,6 +77,7 @@ export default {
       chapterId: '',
       chatpterList: [],
       booksId: '',
+      rId: '',
       loading: false,
       error: '',
       pattern:{
@@ -88,7 +92,25 @@ export default {
     }
   },
   onLoad(options) {
+    console.log(options)
+    // 检验参数(options, ['id', 'booksId'])
+    if (options.id == null || options.rId == null || options.id === '' || options.rId === '') {
+      // 缺少参数提示并点确认跳转到上一页
+      uni.showModal({
+        content: '缺少参数',
+        showCancel: false,
+        confirmText: '返回上一页',
+        success: function (res) {
+          if (res.confirm) {
+            uni.navigateBack()
+          }
+        }
+      })
+      return;
+    }
+
     this.chapterId = options.id
+    this.rId = options.rId
     this.getChapter()
   },
   onPageScroll(e) {
@@ -97,7 +119,7 @@ export default {
   methods: {
     goToChapter(chapterId) {
       uni.navigateTo({
-        url: `/pages/detail/chapter?id=${chapterId}`
+        url: `/pages/detail/chapter?id=${chapterId}&rId=${this.rId}`,
       })
     },
     toggleList() {
@@ -116,7 +138,7 @@ export default {
     },
     getDetail() {
       uni.request({
-        url: import.meta.env.VITE_SUPABASE_URL + '/books/read/' + this.booksId,
+        url: import.meta.env.VITE_SUPABASE_URL + '/books/read/' + this.rId,
         method: 'GET',
         header: {
           'content-type': 'application/json',
@@ -399,6 +421,8 @@ export default {
   bottom: 0;
   z-index: 10;
   gap: 24rpx;
+  font-weight: 300 !important;
+  font-size: 14px !important;
 }
 .chapter-nav-btn {
   flex: 1;
@@ -406,10 +430,12 @@ export default {
   color: #fff;
   border: none;
   border-radius: 12rpx;
-  font-size: 30rpx;
-  padding: 20rpx 0;
-  margin: 0 8rpx;
-  font-weight: bold;
+  line-height: 150% !important;
+
+  /* font-size: 30rpx; */
+  padding: 20rpx 10rpx !important;
+  /* margin: 0 8rpx; 
+  font-weight: bold;*/
   box-shadow: 0 2rpx 8rpx #6366f122;
   transition: background 0.2s;
 }

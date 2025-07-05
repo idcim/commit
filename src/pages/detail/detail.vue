@@ -6,7 +6,11 @@
     <view class="nav-title">{{  '漫画详情' }}</view>
     <view class="nav-right"></view>
   </view>
-  <view class="detail-content">
+  <!-- 加载中 -->
+  <view v-if="loading" style="text-align:center;margin:32rpx 0;">
+    <uni-load-more :status="'loading'"></uni-load-more>
+  </view>
+  <view v-if="comic.Id" class="detail-content">
     <image :src="comic.cover_url || comic.cover" class="detail-cover" mode="aspectFill" v-if="comic.cover_url || comic.cover" :lazy-load="true"></image>
     <view class="detail-title">{{ comic.title || comic.name || '漫画详情' }}</view>
     <view class="detail-alias" v-if="comic.aliases">别名：{{ comic.aliases }}</view>
@@ -38,7 +42,7 @@
       <view class="chapter-title">
         章节列表 <text v-if="chapters.length">({{ chapters.length }})</text>
       </view>
-      <view v-if="chapters.length">
+      <view class="chapter-list" v-if="chapters.length">
         <view v-for="chapter in chapters" :key="chapter.id || chapter.Id" class="chapter-item" @click="goToChapter(chapter.Id)">
           <text>{{ chapter.title || chapter.name }}</text>
         </view>
@@ -55,6 +59,7 @@ export default {
       comic: {},
       chapters: [],
       chapterId: '',
+      bookId:'',
       loading: false,
       error: ''
     }
@@ -62,11 +67,10 @@ export default {
   async onLoad(options) {
     this.chapterId = options.id
     this.getDetail()
-    this.getChapterList()
   },
   methods: {
     goToChapter(chapterId) {
-      uni.navigateTo({ url: `/pages/detail/chapter?id=${chapterId}` })
+      uni.navigateTo({ url: `/pages/detail/chapter?id=${chapterId}&rId=${this.chapterId}` })
     },
     getDetail() {
       this.loading = true
@@ -83,6 +87,8 @@ export default {
           if (res.data && res.data.data) {
             this.comic = res.data.data
             console.log(this.comic)
+            this.bookId = this.comic.book_id
+            this.getChapterList()
           }
         },
         fail: () => {
@@ -95,7 +101,7 @@ export default {
     },
     getChapterList() { 
       uni.request({
-        url: import.meta.env.VITE_SUPABASE_URL + '/chapters/list/?where=(book_id,eq,'+this.chapterId+')&sort=order_num&limit=0&fields=book_id,title,Id,order_num',
+        url: import.meta.env.VITE_SUPABASE_URL + '/chapters/list/?where=(book_id,eq,'+this.bookId+')&sort=order_num&limit=1000&fields=book_id,title,Id,order_num',
         method: 'GET',
         header: {
           'content-type': 'application/json',
@@ -244,5 +250,11 @@ export default {
   font-weight: bold;
   color: #6366f1;
   letter-spacing: 2rpx;
+}
+.chapter-list{
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 10rpx;
 }
 </style>

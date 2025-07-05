@@ -9,7 +9,7 @@ lerna-debug.log*
 
 node_modules
 .DS_Store
-dist
+dist/dev
 *.local
 
 # Editor directories and files
