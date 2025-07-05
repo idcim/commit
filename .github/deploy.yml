@@ -1,0 +1,25 @@
+name: Deploy Static H5 to 1Panel
+on:
+  push:
+    branches:
+      - main  # 部署触发分支，根据实际情况修改
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Upload to 1Panel Server
+        uses: appleboy/scp-action@v0.9.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: ${{ secrets.PORT }}
+          source: 'dist/build/h5/*'  # 构建后的静态文件目录
+          target: '/opt/1panel/www/sites/st.idata.im/index'  # 1Panel网站根目录
+          strip_components: 0
+          script: |
+              chmod -R 755 /opt/1panel/www/sites/st.idata.im/index
