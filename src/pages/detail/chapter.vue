@@ -112,7 +112,7 @@ export default {
     this.chapterId = options.id
     this.rId = options.rId
     this.getChapter()
-  },
+  }, 
   onPageScroll(e) {
     this.scrollTop = e.scrollTop;
   },
