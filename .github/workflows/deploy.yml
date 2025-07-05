@@ -1,8 +1,9 @@
-name: Deploy Static H5 to 1Panel
+name: Deploy Static H5 to 1Panel via FTP
+
 on:
   push:
     branches:
-      - marster  # 部署触发分支，根据实际情况修改
+      - master
 
 jobs:
   deploy:
@@ -11,15 +12,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Upload to 1Panel Server
-        uses: appleboy/scp-action@v0.9.0
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to FTP Server
+        uses: SamKirkland/FTP-Deploy-Action@4.3.4
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SERVER_PASSWORD }}
-          port: ${{ secrets.PORT }}
-          source: 'dist/build/h5/*'  # 构建后的静态文件目录
-          target: '/opt/1panel/www/sites/st.idata.im/index'  # 1Panel网站根目录
-          strip_components: 0
-          script: |
-              chmod -R 755 /opt/1panel/www/sites/st.idata.im/index
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: ${{ secrets.FTP_PORT }}
+          local-dir: dist/  # 构建后的静态文件目录
+          remote-dir: /opt/1panel/www/sites/st.idata.im/index # FTP 服务器上的目标目录
+          delete-files: true # 可选: 在上传前删除远程目录中的文件
