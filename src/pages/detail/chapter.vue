@@ -119,7 +119,7 @@ export default {
   methods: {
     goToChapter(chapterId) {
       uni.navigateTo({
-        url: `/pages/detail/chapter?id=${chapterId}&rId=${this.rId}`,
+        url: `/pages/detail/chapter?id=${chapterId}&rId=${this.rId}`, 
       })
     },
     toggleList() {
