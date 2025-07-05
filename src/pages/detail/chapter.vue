@@ -125,7 +125,7 @@ export default {
     toggleList() {
       this.$refs.listChapter.open('right');
     },
-    change(e) { 
+    change(e) {
       if (e.show === false) {
         this.$refs.listChapter.close()
       }
