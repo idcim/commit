@@ -2,7 +2,7 @@ name: Deploy Static H5 to 1Panel
 on:
   push:
     branches:
-      - main  # 部署触发分支，根据实际情况修改
+      - marster  # 部署触发分支，根据实际情况修改
 
 jobs:
   deploy:
