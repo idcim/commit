@@ -1,6 +1,6 @@
 <template>
   <view class="custom-navbar">
-    <view class="nav-left" @click="goBack">
+    <view class="nav-left" @click="goLink(comic.Id)">
       <uni-icons type="back" size="22" color="#6366f1" />
     </view>
     <view class="nav-title" @click="scrollToTop">漫画详情</view>
@@ -88,7 +88,8 @@ export default {
         color: '#e96900'
       },
       scrollTop: 0,
-      scrollShow: false
+      scrollShow: false,
+      isHandlingScroll: false
     }
   },
   onLoad(options) {
@@ -115,6 +116,8 @@ export default {
   },
   onPageScroll(e) {
     this.scrollTop = e.scrollTop;
+    // 检测是否滚动到底部
+    this.checkScrollToBottom();
   },
   methods: {
     goToChapter(chapterId) {
@@ -222,6 +225,64 @@ export default {
       uni.navigateTo({
         url: `/pages/detail/detail?id=${id}`
       })
+    },
+    checkScrollToBottom() {
+      // 获取页面高度信息
+      const query = uni.createSelectorQuery();
+      query.select('.chapter-content').boundingClientRect();
+      query.selectViewport().scrollOffset();
+      query.exec((res) => {
+        if (res[0] && res[1]) {
+          const contentHeight = res[0].height;
+          const scrollTop = res[1].scrollTop;
+          const windowHeight = uni.getSystemInfoSync().windowHeight;
+          
+          // 当滚动到底部时（距离底部小于50px）
+          if (scrollTop + windowHeight >= contentHeight - 50) {
+            this.handleScrollToBottom();
+          }
+        }
+      });
+    },
+    
+    handleScrollToBottom() {
+      const windowHeight = uni.getSystemInfoSync().windowHeight;
+      console.log(windowHeight)
+      if (this.loading && windowHeight>200) return;
+      // 防止重复触发
+      if (this.isHandlingScroll) return;
+      this.isHandlingScroll = true;
+      
+      setTimeout(() => {
+        this.isHandlingScroll = false;
+      }, 1000);
+      
+      if (this.nextChapter) {
+        // 如果有下一章节，则1秒自动跳转
+        setTimeout(() => {
+          this.goToChapter(this.nextChapter.id);
+        }, 1000);
+        
+        // 有下一章节，自动跳转
+        /* uni.showModal({
+          title: '自动跳转',
+          content: `是否跳转到下一章节：${this.nextChapter.title}？`,
+          confirmText: '跳转',
+          cancelText: '取消',
+          success: (res) => {
+            if (res.confirm) {
+              this.goToChapter(this.nextChapter.id);
+            }
+          }
+        }); */
+      } else {
+        // 没有下一章节，提示用户
+        uni.showToast({
+          title: '已经是最后一章节了',
+          icon: 'none',
+          duration: 2000
+        });
+      }
     }
   },
   computed: {

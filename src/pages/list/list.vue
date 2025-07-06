@@ -234,7 +234,7 @@ export default {
 .list-bg {
   min-height: 100vh;
   background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
-  padding: 2.75rem 0 0;
+  padding:  0 0;
 }
 .list-scroll {
   height: 99vh;
